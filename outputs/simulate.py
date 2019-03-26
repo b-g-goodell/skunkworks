@@ -7,6 +7,8 @@
 import numpy
 import argparse
 import sys
+import scipy
+import math
 
 # Check version
 if sys.version_info[0] < 3:
@@ -72,6 +74,31 @@ def generate_chain():
 # Make a gamma selection
 def gamma():
     return numpy.random.gamma(shape=GAMMA_SHAPE,scale=GAMMA_SCALE)
+
+# Make a selection using true weighted PMF
+def select_true():
+    u = numpy.random.sample()
+    v = 0.0
+    M = sum(chain) # total number of txns
+    index = 0 # block depth (integer)
+    while u > v and index < len(chain):
+        xmin = math.log(args.block_time*float(index))
+        xmax = math.log(args.block_time*float(index+1))
+        p = scipy.stats.gamma.cdf(xmax, a=GAMMA_SHAPE, scale=GAMMA_SCALE) - scipy.stats.gamma.cdf(xmin, a=GAMMA_SHAPE, scale=GAMMA_SCALE)  # pmf of obtaining this virtual block age
+        v += p*chain[index]/M
+        index += 1
+
+    # Now select an output uniformly within the block
+    if numpy.random.randint(0,chain[index]) == 0:
+        coinbase = True
+    else:
+        coinbase = False
+
+    return index,coinbase
+     
+    
+    
+        
 
 # Make a selection using a partial-window method
 def select_partial():
